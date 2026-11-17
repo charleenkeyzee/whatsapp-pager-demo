@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WhatsApp Pager – Flow Demo</title>
+<style>
+  :root {
+    --bg: #f4efe9; --ink: #2b211b; --muted: #7a6a5f; --accent: #8a5a3b;
+    --wa-green: #25d366; --wa-dark: #075e54; --wa-bubble: #dcf8c6; --wa-bg: #ece5dd;
+    --ready: #2e9d5b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { padding: 20px 28px 8px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+
+  .stepper { display: flex; gap: 6px; padding: 12px 28px; flex-wrap: wrap; }
+  .step-pill { border: 1px solid #d8cbbf; background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: var(--muted); }
+  .step-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .step-pill.done { color: var(--ink); }
+
+  .caption { margin: 4px 28px 14px; padding: 12px 16px; background: #fff; border-left: 4px solid var(--accent); border-radius: 8px; font-size: 15px; min-height: 48px; }
+  .controls { display: flex; gap: 8px; margin: 0 28px 16px; }
+  .controls button { font-size: 14px; padding: 8px 16px; border-radius: 8px; border: 1px solid #cdbfb2; background: #fff; cursor: pointer; }
+  .controls button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .controls button:disabled { opacity: .4; cursor: default; }
+
+  .stage { display: grid; grid-template-columns: 1fr 300px 1fr; gap: 24px; padding: 0 28px 32px; align-items: start; }
+  @media (max-width: 1000px) { .stage { grid-template-columns: 1fr; justify-items: center; } }
+  .col { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+  .hl { outline: 3px solid #f0a64b; outline-offset: 4px; transition: outline-color .3s; }
+
+  /* Till customer display */
+  .till { background: #1f1f1f; border-radius: 14px; padding: 12px; }
+  .till-screen { background: #fff; border-radius: 6px; padding: 16px; min-height: 200px; display: flex; gap: 16px; align-items: center; }
+  .till-screen .info h3 { margin: 0 0 4px; font-size: 18px; }
+  .till-screen .info p { margin: 2px 0; font-size: 13px; color: var(--muted); }
+  .qr { width: 130px; height: 130px; display: grid; grid-template-columns: repeat(25, 1fr); background: #fff; padding: 6px; border: 1px solid #ddd; flex-shrink: 0; }
+  .qr div { background: #fff; } .qr div.on { background: #111; }
+  .wa-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: var(--wa-green); color: #fff; font-weight: 600; font-size: 13px; padding: 6px 10px; border-radius: 6px; }
+  .till-idle { color: var(--muted); font-size: 14px; width: 100%; text-align: center; }
+
+  /* KDS */
+  .kds { background: #263238; border-radius: 14px; padding: 12px; color: #fff; min-height: 200px; }
+  .kds-head { font-size: 13px; color: #b0bec5; margin-bottom: 10px; display: flex; justify-content: space-between; }
+  .ticket { background: #fff; color: #222; border-radius: 8px; width: 190px; overflow: hidden; display: inline-block; vertical-align: top; margin-right: 10px; }
+  .ticket .t-head { background: #ffb300; padding: 6px 10px; font-weight: 700; display: flex; justify-content: space-between; font-size: 14px; }
+  .ticket.is-ready .t-head { background: var(--ready); color: #fff; }
+  .ticket ul { margin: 0; padding: 8px 10px 4px 26px; font-size: 14px; }
+  .ticket .wa-flag { font-size: 11px; color: var(--wa-dark); padding: 0 10px 6px; }
+  .ticket button { width: 100%; border: 0; background: var(--ready); color: #fff; font-weight: 700; font-size: 15px; padding: 10px; cursor: pointer; }
+  .ticket button:disabled { background: #9e9e9e; cursor: default; }
+  .ticket.other { opacity: .7; }
+
+  /* TV board */
+  .tv { background: #111; border-radius: 10px; padding: 10px; border-bottom: 10px solid #333; }
+  .tv-screen { background: #1b1b1b; color: #fff; display: grid; grid-template-columns: 1fr 1fr; border-radius: 4px; overflow: hidden; }
+  .tv-col { padding: 10px 14px; min-height: 110px; }
+  .tv-col h4 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  .tv-col.prep h4 { color: #ffb300; } .tv-col.rdy { background: #14301f; } .tv-col.rdy h4 { color: #6ee7a0; }
+  .tv-num { display: inline-block; font-size: 22px; font-weight: 700; margin: 0 12px 6px 0; }
+  .tv-num.flash { animation: flash 1s ease-in-out 3; }
+  @keyframes flash { 50% { color: #6ee7a0; transform: scale(1.15); } }
+
+  /* Phone */
+  .phone { width: 300px; height: 600px; background: #111; border-radius: 42px; padding: 12px; position: relative; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
+  .notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 110px; height: 24px; background: #111; border-radius: 0 0 14px 14px; z-index: 5; }
+  .screen { width: 100%; height: 100%; border-radius: 32px; overflow: hidden; position: relative; background: #fff; }
+  .view { position: absolute; inset: 0; display: none; flex-direction: column; }
+  .view.show { display: flex; }
+
+  /* camera view */
+  .camera { background: #333; color: #fff; align-items: center; justify-content: center; }
+  .camera .frame { width: 180px; height: 180px; border: 3px solid #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+  .camera .frame .qr { width: 150px; height: 150px; }
+  .camera .pop { margin-top: 18px; background: rgba(255,255,255,.95); color: #111; padding: 10px 14px; border-radius: 12px; font-size: 13px; text-align: center; cursor: pointer; }
+
+  /* whatsapp view */
+  .wa-top { background: var(--wa-dark); color: #fff; padding: 40px 12px 10px; display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: #c8a27c; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .wa-top .name { font-weight: 600; font-size: 15px; } .wa-top .sub { font-size: 11px; opacity: .8; }
+  .verified { color: #8ef0b4; font-size: 12px; }
+  .wa-chat { flex: 1; background: var(--wa-bg); padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .msg { max-width: 82%; padding: 7px 9px 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.35; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,.1); animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } }
+  .msg .time { position: absolute; right: 7px; bottom: 3px; font-size: 10px; color: #8696a0; }
+  .msg.out { align-self: flex-end; background: var(--wa-bubble); }
+  .msg.in { align-self: flex-start; background: #fff; }
+  .msg.ready { border: 2px solid var(--ready); }
+  .msg a { color: #027eb5; text-decoration: none; }
+  .msg .btnrow { margin: 8px -9px -16px; border-top: 1px solid #eee; display: flex; }
+  .msg .btnrow span { flex: 1; text-align: center; padding: 8px 0 20px; color: #027eb5; font-size: 13px; }
+  .wa-input { background: #f0f0f0; padding: 8px; display: flex; gap: 6px; align-items: center; }
+  .wa-input .box { flex: 1; background: #fff; border-radius: 18px; padding: 8px 12px; font-size: 13px; color: #111; min-height: 34px; }
+  .wa-input .box.empty { color: #999; }
+  .send { width: 38px; height: 38px; border-radius: 50%; background: var(--wa-dark); border: 0; color: #fff; font-size: 16px; cursor: pointer; }
+  .send.pulse { animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(37,211,102,.35); } }
+
+  /* lock screen */
+  .lock { background: linear-gradient(160deg, #3b2a20, #8a5a3b 60%, #d9a273); color: #fff; align-items: center; padding-top: 70px; }
+  .lock .clock { font-size: 64px; font-weight: 300; }
+  .lock .date { font-size: 14px; opacity: .85; margin-bottom: 24px; }
+  .notif { width: 90%; background: rgba(255,255,255,.85); color: #111; border-radius: 16px; padding: 10px 12px; display: none; gap: 10px; cursor: pointer; animation: drop .5s cubic-bezier(.2,1.4,.4,1); }
+  .notif.show { display: flex; }
+  @keyframes drop { from { transform: translateY(-40px); opacity: 0; } }
+  .notif .icon { width: 34px; height: 34px; border-radius: 8px; background: var(--wa-green); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .notif .t { font-size: 12px; color: #555; display: flex; justify-content: space-between; }
+  .notif .b { font-size: 14px; } .notif .b strong { display: block; }
+  .lock .hint { margin-top: auto; margin-bottom: 30px; font-size: 12px; opacity: .7; }
+  .buzz { animation: buzz .12s linear 8; }
+  @keyframes buzz { 25% { transform: translateX(-3px) rotate(-1deg); } 75% { transform: translateX(3px) rotate(1deg); } }
+
+  footer { padding: 0 28px 28px; color: var(--muted); font-size: 12px; }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 760px) {
+    header { padding: 14px 16px 4px; }
+    header h1 { font-size: 18px; }
+    header p { font-size: 13px; }
+    .stepper { display: none; }
+    .caption { margin: 8px 16px 12px; font-size: 14px; min-height: 0; }
+    .stage { display: flex; flex-direction: column; padding: 0 16px 110px; }
+    .col-kds { order: -1; }
+    .col { align-items: center; margin-bottom: 16px; }
+    .col > div { width: 100%; }
+    /* only show the device that matters for the current step */
+    body[data-focus="till"] .col-phone, body[data-focus="till"] .col-kds,
+    body[data-focus="phone"] .col-till, body[data-focus="phone"] .col-kds,
+    body[data-focus="kds"] .col-till, body[data-focus="kds"] .col-phone { display: none; }
+    body[data-focus="phone"][data-tv="1"] .col-till { display: flex; }
+    body[data-focus="phone"][data-tv="1"] .col-till .till-wrap { display: none; }
+    body[data-focus="kds"] .col-till { display: flex; }
+    body[data-focus="kds"] .col-till .till-wrap { display: none; }
+    .col-phone { order: -1; }
+    .till-screen { flex-direction: column; text-align: center; }
+    .ticket { width: 100%; margin: 0 0 10px; }
+    .phone { width: min(300px, 86vw); height: min(600px, 62vh); border-radius: 36px; }
+    .screen { border-radius: 28px; }
+    .lock { padding-top: 50px; } .lock .clock { font-size: 52px; }
+    .controls { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(244,239,233,.96); backdrop-filter: blur(8px); border-top: 1px solid #e0d4c8; z-index: 20; }
+    .controls button { flex: 1; padding: 12px; font-size: 15px; }
+    .controls #reset { flex: 0 0 auto; }
+    .progress { display: block !important; }
+    footer { padding-bottom: 100px; }
+  }
+  .progress { display: none; margin: 8px 16px 0; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>☕ Le Coffee Shop: WhatsApp pager flow</h1>
+  <p>Clickable mock-up. Tap <b>Next</b>, or tap the highlighted button in each step.</p>
+</header>
+
+<div class="stepper" id="stepper"></div>
+<div class="progress" id="progress"></div>
+<div class="caption" id="caption"></div>
+<div class="controls">
+  <button id="back">← Back</button>
+  <button id="next" class="primary">Next →</button>
+  <button id="reset">Restart</button>
+</div>
+
+<div class="stage">
+  <!-- Left: till + TV -->
+  <div class="col col-till">
+    <div class="till-wrap">
+      <div class="label">Till · customer-facing screen</div>
+      <div class="till" id="till">
+        <div class="till-screen" id="tillScreen"></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">In-store TV board</div>
+      <div class="tv"><div class="tv-screen">
+        <div class="tv-col prep"><h4>Preparing</h4><div id="tvPrep"></div></div>
+        <div class="tv-col rdy"><h4>Ready to collect</h4><div id="tvReady"></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- Middle: phone -->
+  <div class="col col-phone" style="align-items:center">
+    <div class="label">Customer's phone</div>
+    <div class="phone" id="phone">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="view camera" id="vCamera">
+          <div class="frame"><div class="qr" id="qrCam"></div></div>
+          <div class="pop" id="camPop">📱 Open in <b>WhatsApp</b><br><span style="color:#666">wa.me/230XXXXXXX?text=Order C1234</span></div>
+        </div>
+        <div class="view" id="vChat">
+          <div class="wa-top">
+            <div class="avatar">☕</div>
+            <div><div class="name">Le Coffee Shop <span class="verified">✔︎</span></div><div class="sub">Business account</div></div>
+          </div>
+          <div class="wa-chat" id="chat"></div>
+          <div class="wa-input">
+            <div class="box empty" id="inputBox">Message</div>
+            <button class="send" id="sendBtn">➤</button>
+          </div>
+        </div>
+        <div class="view lock" id="vLock">
+          <div class="clock">10:42</div>
+          <div class="date">Tuesday 17 November</div>
+          <div class="notif" id="notif">
+            <div class="icon">💬</div>
+            <div style="flex:1">
+              <div class="t"><span>WhatsApp</span><span>now</span></div>
+              <div class="b"><strong>Le Coffee Shop</strong>☕ Order C1234 is ready! Please come and collect it at the counter.</div>
+            </div>
+          </div>
+          <div class="hint">Phone locked, in pocket</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: KDS -->
+  <div class="col col-kds">
+    <div>
+      <div class="label">Kitchen display (KDS)</div>
+      <div class="kds" id="kds">
+        <div class="kds-head"><span>BAR · Drinks & food</span><span id="kdsCount">0 orders</span></div>
+        <div id="tickets"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Illustrative only. The QR code is decorative, and the names and number are placeholders.</footer>
+
+<script>
+// --- decorative QR ---
+function drawQR(el) {
+  el.innerHTML = '';
+  const N = 25; let seed = 7;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const finder = (r, c) => {
+    for (const [fr, fc] of [[0,0],[0,N-7],[N-7,0]]) {
+      const y = r - fr, x = c - fc;
+      if (y >= 0 && y < 7 && x >= 0 && x < 7) {
+        return (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4)) ? 1 : 0;
+      }
+      if (y >= -1 && y <= 7 && x >= -1 && x <= 7) return 0;
+    }
+    return null;
+  };
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const d = document.createElement('div');
+    const f = finder(r, c);
+    if (f === 1 || (f === null && rnd() > .5)) d.className = 'on';
+    el.appendChild(d);
+  }
+}
+
+// --- state ---
+const $ = id => document.getElementById(id);
+let step = 0;
+const steps = [
+  { name: '1. Pay at till',
+    text: '<b>Customer pays</b> by card, phone or cash. The order goes to the kitchen, and the till\'s customer screen shows a QR code: <i>"Scan to get a WhatsApp message when your order is ready."</i>' },
+  { name: '2. Scan QR',
+    text: 'The customer <b>scans the QR with their normal camera</b>. No app download, no typing a phone number. Tap the pop-up to open WhatsApp. 👉' },
+  { name: '3. Tap send',
+    text: 'WhatsApp opens a chat with the shop and the message <b>already filled in</b> ("Order C1234"). The customer just <b>taps send</b>. 👉' },
+  { name: '4. Confirmation',
+    text: 'The shop\'s bot replies instantly with the order summary and an <b>e-invoice link</b>. The customer pockets their phone and finds a seat.' },
+  { name: '5. Kitchen taps Ready',
+    text: 'On the KDS, the barista taps <b>READY</b> on ticket C1234. 👉 <i>(This is the custom "Ready" hook in our KDS module.)</i>' },
+  { name: '6. Phone buzzes',
+    text: 'A <b>WhatsApp notification on the lock screen</b>, even with the phone locked, the browser closed, or another app open. The TV board moves C1234 to <b>Ready</b> too.' },
+  { name: '7. Collect',
+    text: 'The customer collects. Optional extras: a quick 👍/👎 rating or a loyalty-points message. Customers who didn\'t scan still see their number on the TV board.' },
+];
+
+function render() {
+  // stepper
+  $('stepper').innerHTML = steps.map((s, i) =>
+    `<span class="step-pill ${i === step ? 'active' : i < step ? 'done' : ''}" data-i="${i}">${s.name}</span>`).join('');
+  document.querySelectorAll('.step-pill').forEach(p => p.onclick = () => { step = +p.dataset.i; render(); });
+  $('caption').innerHTML = steps[step].text;
+  $('progress').textContent = `Step ${step + 1} of ${steps.length} · ${steps[step].name.replace(/^\d+\. /, '')}`;
+  const focus = step === 0 ? 'till' : step === 4 ? 'kds' : 'phone';
+  document.body.dataset.focus = focus;
+  document.body.dataset.tv = step === 5 ? '1' : '0';
+  if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo({ top: 0, behavior: 'smooth' });
+  $('back').disabled = step === 0;
+  $('next').disabled = step === steps.length - 1;
+
+  // clear highlights
+  document.querySelectorAll('.hl').forEach(e => e.classList.remove('hl'));
+
+  // till
+  if (step >= 0) {
+    $('tillScreen').innerHTML = `
+      <div class="qr" id="qrTill"></div>
+      <div class="info">
+        <h3>Thank you! Order <span style="color:var(--accent)">C1234</span></h3>
+        <p>1× Flat white · 1× Almond croissant</p>
+        <p>Paid · Rs 285</p>
+        <div class="wa-cta">💬 Scan to get a WhatsApp alert when it's ready</div>
+      </div>`;
+    drawQR($('qrTill'));
+  }
+  if (step <= 1) $('till').classList.add('hl');
+
+  // TV
+  const ready = step >= 5;
+  $('tvPrep').innerHTML = (ready ? '' : '<span class="tv-num">C1234</span>') + '<span class="tv-num">C1235</span><span class="tv-num">C1236</span>';
+  $('tvReady').innerHTML = '<span class="tv-num">C1231</span>' + (ready ? `<span class="tv-num ${step === 5 ? 'flash' : ''}">C1234</span>` : '');
+
+  // KDS
+  $('kdsCount').textContent = (ready ? 2 : 3) + ' orders';
+  $('tickets').innerHTML = `
+    <div class="ticket ${ready ? 'is-ready' : ''}">
+      <div class="t-head"><span>C1234</span><span>${ready ? '✓ Ready' : '3:12'}</span></div>
+      <ul><li>Flat white (oat)</li><li>Almond croissant (warm)</li></ul>
+      <div class="wa-flag">${step >= 3 ? '💬 WhatsApp alert on' : '&nbsp;'}</div>
+      <button id="readyBtn" ${step !== 4 ? 'disabled' : ''}>${ready ? 'Customer notified ✓' : 'READY'}</button>
+    </div>
+    <div class="ticket other">
+      <div class="t-head"><span>C1235</span><span>1:40</span></div>
+      <ul><li>Iced latte</li></ul><div class="wa-flag">&nbsp;</div>
+      <button disabled>READY</button>
+    </div>`;
+  if (step === 4) { $('readyBtn').classList.add('hl'); $('readyBtn').onclick = () => { step = 5; render(); }; }
+
+  // phone views
+  ['vCamera', 'vChat', 'vLock'].forEach(v => $(v).classList.remove('show'));
+  $('phone').classList.remove('buzz');
+  if (step <= 1) {
+    $('vCamera').classList.add('show');
+    drawQR($('qrCam'));
+    $('camPop').style.visibility = step === 1 ? 'visible' : 'hidden';
+    if (step === 1) { $('camPop').classList.add('hl'); $('camPop').onclick = () => { step = 2; render(); }; }
+  } else if (step === 2 || step === 3 || step === 6) {
+    $('vChat').classList.add('show');
+    renderChat();
+  } else {
+    $('vLock').classList.add('show');
+    $('notif').classList.toggle('show', step === 5);
+    if (step === 5) {
+      void $('phone').offsetWidth; $('phone').classList.add('buzz');
+      $('notif').classList.add('hl');
+      $('notif').onclick = () => { step = 6; render(); };
+    }
+  }
+}
+
+function renderChat() {
+  const chat = $('chat');
+  const msgs = [];
+  if (step >= 3) {
+    msgs.push(`<div class="msg out">Hi! Please notify me when order C1234 is ready ☕<span class="time">10:38 ✓✓</span></div>`);
+    msgs.push(`<div class="msg in">Thanks! 🙌 We're making your order <b>C1234</b>:<br>• Flat white (oat)<br>• Almond croissant<br><br>We'll message you here the moment it's ready.<br><br>🧾 Your e-invoice: <a href="#">lecoffeeshop.mu/r/8f3k…</a><span class="time">10:38</span></div>`);
+  }
+  if (step >= 6) {
+    msgs.push(`<div class="msg in ready">☕ <b>Order C1234 is ready!</b><br>Please come and collect it at the counter.<span class="time">10:42</span>
+      <div class="btnrow"><span>👍 Great</span><span>👎 Not great</span></div></div>`);
+  }
+  chat.innerHTML = msgs.join('');
+  chat.scrollTop = chat.scrollHeight;
+
+  const box = $('inputBox'), btn = $('sendBtn');
+  btn.classList.remove('pulse');
+  if (step === 2) {
+    box.textContent = 'Hi! Please notify me when order C1234 is ready ☕';
+    box.classList.remove('empty');
+    btn.classList.add('pulse', 'hl');
+    btn.onclick = () => { step = 3; render(); };
+  } else {
+    box.textContent = 'Message'; box.classList.add('empty');
+    btn.onclick = null;
+  }
+}
+
+$('next').onclick = () => { if (step < steps.length - 1) { step++; render(); } };
+$('back').onclick = () => { if (step > 0) { step--; render(); } };
+$('reset').onclick = () => { step = 0; render(); };
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') $('next').click();
+  if (e.key === 'ArrowLeft') $('back').click();
+});
+step = Math.min(Math.max(parseInt(location.hash.slice(1)) || 0, 0), steps.length - 1);
+render();
+</script>
+</body>
+</html>
